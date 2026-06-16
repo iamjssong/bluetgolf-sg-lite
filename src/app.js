@@ -269,10 +269,6 @@ function renderAppHeader(summary) {
   const totalSg = state.courseName ? formatSg(summary.totalSg, 1, '-') : '-';
 
   return `
-    <div class="status-bar" aria-hidden="true">
-      <span>9:41</span>
-      <span class="status-dots"><i></i><i></i><i></i></span>
-    </div>
     <header class="app-header">
       <div class="brand-lockup">
         <span class="app-logo">BT</span>
