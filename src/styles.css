@@ -1,19 +1,27 @@
 :root {
-  --app-bg: #eef8f3;
+  color-scheme: light dark;
+  --app-bg: #f7fcff;
   --surface: #ffffff;
-  --surface-soft: #f3faf6;
-  --surface-green: #e1f7ed;
-  --text: #071d2b;
-  --muted: #64766f;
-  --line: #dcebe4;
-  --line-strong: #b8d4c8;
-  --green: #069766;
-  --green-dark: #04714d;
-  --sky: #2f8ed8;
+  --surface-soft: #f2f8ff;
+  --surface-blue: #edf6ff;
+  --surface-blue-strong: #d8eaff;
+  --surface-green: #edf9f2;
+  --surface-green-strong: #d9f1e3;
+  --text: #061d34;
+  --muted: #637789;
+  --line: #d7e6f2;
+  --line-strong: #a9c5dc;
+  --blue: #0a66d8;
+  --blue-dark: #073b78;
+  --blue-line: #9cc8f5;
+  --green: #087a4a;
+  --green-dark: #075c38;
+  --green-line: #92d0aa;
+  --sky: #2687d7;
   --red: #c64646;
   --red-soft: #fae8e8;
-  --navy: #062338;
-  --shadow: 0 18px 44px rgba(9, 47, 37, 0.1);
+  --navy: #061d34;
+  --shadow: 0 18px 44px rgba(10, 50, 82, 0.1);
   --nav-height: 78px;
   color: var(--text);
   font-family:
@@ -27,16 +35,14 @@
 }
 
 html {
-  background: #dceee6;
+  background: #e7f4fb;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background:
-    radial-gradient(circle at 50% -120px, rgba(6, 151, 102, 0.16), transparent 360px),
-    linear-gradient(180deg, #f6fbf8 0%, #dceee6 100%);
+  background: linear-gradient(180deg, #fbfeff 0%, #edf7fc 100%);
 }
 
 button,
@@ -74,9 +80,7 @@ button {
   min-height: 100svh;
   margin: 0 auto;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(225, 247, 237, 0.82) 0, rgba(238, 248, 243, 0.96) 260px),
-    var(--app-bg);
+  background: linear-gradient(180deg, #fbfeff 0, var(--app-bg) 320px);
   box-shadow: 0 0 0 1px rgba(6, 35, 56, 0.04), 0 24px 70px rgba(6, 35, 56, 0.18);
 }
 
@@ -102,7 +106,7 @@ button {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 12px;
-  background: var(--navy);
+  background: var(--blue-dark);
   color: #fff;
   font-size: 13px;
   font-weight: 900;
@@ -119,7 +123,7 @@ button {
 }
 
 .brand-lockup small {
-  color: var(--muted);
+  color: var(--blue);
   font-size: 12px;
   font-weight: 750;
 }
@@ -131,10 +135,10 @@ button {
   gap: 2px;
   min-width: 68px;
   height: 38px;
-  border: 1px solid rgba(6, 151, 102, 0.18);
+  border: 1px solid rgba(10, 102, 216, 0.18);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
-  color: var(--green-dark);
+  color: var(--blue-dark);
   font-size: 13px;
   font-weight: 900;
 }
@@ -151,9 +155,9 @@ button {
   align-items: end;
   margin: 0 18px 14px;
   padding: 17px;
-  border: 1px solid rgba(6, 151, 102, 0.12);
+  border: 1px solid var(--green-line);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--surface-green);
   box-shadow: var(--shadow);
 }
 
@@ -257,7 +261,9 @@ button {
   display: grid;
   gap: 3px;
   min-height: 86px;
+  border-color: rgba(8, 122, 74, 0.2);
   border-radius: 14px;
+  background: var(--surface-green);
   padding: 12px 10px;
 }
 
@@ -279,6 +285,20 @@ button {
   padding: 16px;
 }
 
+.course-card,
+.hole-card,
+.settings-card {
+  border-color: var(--blue-line);
+  background: var(--surface-blue);
+}
+
+.preview-sheet,
+.insight-card,
+.trend-card {
+  border-color: var(--green-line);
+  background: var(--surface-green);
+}
+
 .card-head,
 .sheet-head {
   display: flex;
@@ -298,8 +318,8 @@ button {
   min-height: 26px;
   align-items: center;
   border-radius: 999px;
-  background: var(--surface-green);
-  color: var(--green-dark);
+  background: var(--surface-blue-strong);
+  color: var(--blue);
   padding: 0 9px;
   font-size: 11px;
   font-weight: 900;
@@ -312,8 +332,8 @@ button {
 }
 
 .confidence.medium {
-  background: #e7f3ff;
-  color: #176fae;
+  background: var(--surface-blue-strong);
+  color: var(--blue);
 }
 
 .hole-rail {
@@ -339,10 +359,10 @@ button {
   min-width: 52px;
   min-height: 58px;
   place-items: center;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 14px;
   background: #fff;
-  color: var(--text);
+  color: var(--muted);
   scroll-snap-align: start;
 }
 
@@ -360,10 +380,10 @@ button {
 }
 
 .hole-pill.selected {
-  border-color: var(--green);
-  background: var(--surface-green);
-  color: var(--green-dark);
-  box-shadow: inset 0 0 0 1px rgba(6, 151, 102, 0.22);
+  border-color: var(--blue);
+  background: #fff;
+  color: var(--blue);
+  box-shadow: inset 0 0 0 1px rgba(10, 102, 216, 0.22);
 }
 
 .control-grid {
@@ -388,7 +408,7 @@ button {
   grid-template-columns: 1fr auto;
   align-items: center;
   min-height: 56px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid rgba(10, 102, 216, 0.16);
 }
 
 .control-grid .app-field:last-child {
@@ -405,10 +425,10 @@ button {
 .app-stepper input {
   width: 100%;
   height: 44px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--blue-line);
   border-radius: 12px;
   background: #fff;
-  color: var(--navy);
+  color: var(--blue-dark);
   text-align: center;
   font-size: 16px;
   font-weight: 900;
@@ -419,8 +439,8 @@ button {
 .settings-field input:focus,
 .settings-field select:focus,
 .course-select select:focus {
-  border-color: var(--green);
-  box-shadow: 0 0 0 4px rgba(6, 151, 102, 0.12);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 4px rgba(10, 102, 216, 0.12);
 }
 
 .app-stepper em {
@@ -437,10 +457,10 @@ button {
   width: 42px;
   height: 44px;
   place-items: center;
-  border: 1px solid var(--line);
+  border: 1px solid var(--blue-line);
   border-radius: 12px;
-  background: var(--surface-soft);
-  color: var(--navy);
+  background: var(--surface-blue-strong);
+  color: var(--blue-dark);
 }
 
 .round-icon-button .icon {
@@ -466,9 +486,9 @@ button {
   gap: 3px;
   min-height: 40px;
   padding: 4px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--blue-line);
   border-radius: 12px;
-  background: var(--surface-soft);
+  background: rgba(216, 234, 255, 0.62);
 }
 
 .app-segmented button {
@@ -481,9 +501,9 @@ button {
 }
 
 .app-segmented button.selected {
-  background: #fff;
-  color: var(--green-dark);
-  box-shadow: 0 4px 12px rgba(9, 47, 37, 0.08);
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(10, 102, 216, 0.16);
 }
 
 .bucket-row {
@@ -497,7 +517,7 @@ button {
   min-height: 68px;
   align-content: center;
   gap: 4px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 14px;
   background: #fff;
   color: var(--text);
@@ -519,10 +539,10 @@ button {
 
 .distance-tile.selected,
 .arrival-token.selected {
-  border-color: var(--green);
-  background: var(--surface-green);
-  color: var(--green-dark);
-  box-shadow: inset 0 0 0 1px rgba(6, 151, 102, 0.18);
+  border-color: var(--blue);
+  background: #fff;
+  color: var(--blue);
+  box-shadow: inset 0 0 0 1px rgba(10, 102, 216, 0.18);
 }
 
 .arrival-row {
@@ -533,7 +553,7 @@ button {
 
 .arrival-token {
   min-height: 38px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 12px;
   background: #fff;
   color: var(--text);
@@ -585,11 +605,11 @@ button {
 .course-select select {
   min-height: 48px;
   appearance: none;
-  border: 1px solid var(--line);
+  border: 1px solid var(--blue-line);
   border-radius: 14px;
   background:
-    linear-gradient(45deg, transparent 50%, var(--green-dark) 50%) calc(100% - 18px) 20px / 6px 6px no-repeat,
-    linear-gradient(135deg, var(--green-dark) 50%, transparent 50%) calc(100% - 12px) 20px / 6px 6px no-repeat,
+    linear-gradient(45deg, transparent 50%, var(--blue) 50%) calc(100% - 18px) 20px / 6px 6px no-repeat,
+    linear-gradient(135deg, var(--blue) 50%, transparent 50%) calc(100% - 12px) 20px / 6px 6px no-repeat,
     #fff;
   color: var(--navy);
   padding: 0 38px 0 13px;
@@ -605,7 +625,7 @@ button {
 .empty-card .icon {
   width: 28px;
   height: 28px;
-  color: var(--green-dark);
+  color: var(--blue);
 }
 
 .preview-sheet {
@@ -621,7 +641,7 @@ button {
   height: 4px;
   margin: 0 auto 13px;
   border-radius: 999px;
-  background: #cfe0d8;
+  background: var(--surface-green-strong);
 }
 
 .sheet-head h2 {
@@ -640,7 +660,7 @@ button {
   display: grid;
   gap: 5px;
   border-radius: 14px;
-  background: var(--surface-soft);
+  background: rgba(255, 255, 255, 0.64);
   padding: 10px 8px;
 }
 
@@ -661,7 +681,7 @@ button {
 .formula-strip span {
   flex: 1 0 auto;
   border-radius: 999px;
-  background: var(--surface-soft);
+  background: rgba(255, 255, 255, 0.64);
   color: var(--muted);
   padding: 7px 9px;
   font-size: 11px;
@@ -706,7 +726,7 @@ button {
   display: grid;
   gap: 3px;
   border-radius: 14px;
-  background: var(--surface-soft);
+  background: rgba(255, 255, 255, 0.62);
   padding: 12px;
 }
 
@@ -733,7 +753,7 @@ button {
   gap: 10px;
   align-items: center;
   width: 100%;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 16px;
   background: #fff;
   padding: 11px;
@@ -741,8 +761,8 @@ button {
 }
 
 .hole-row.selected {
-  border-color: var(--green);
-  background: var(--surface-green);
+  border-color: var(--blue);
+  background: var(--surface-blue);
 }
 
 .row-hole {
@@ -751,7 +771,7 @@ button {
   height: 38px;
   place-items: center;
   border-radius: 12px;
-  background: var(--navy);
+  background: var(--blue-dark);
   color: #fff;
   font-size: 14px;
   font-weight: 900;
@@ -828,7 +848,7 @@ button {
 
 .trend-track .putting,
 .trend-legend .putting {
-  background: var(--sky);
+  background: var(--blue);
 }
 
 .trend-legend {
@@ -856,23 +876,23 @@ button {
 .settings-field select {
   width: 100%;
   min-height: 46px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--blue-line);
   border-radius: 14px;
   background: #fff;
-  color: var(--navy);
+  color: var(--blue-dark);
   padding: 0 13px;
   outline: none;
 }
 
 input[type='range'] {
-  accent-color: var(--green);
+  accent-color: var(--blue);
 }
 
 .primary-action {
   min-height: 48px;
   border: 0;
   border-radius: 14px;
-  background: var(--navy);
+  background: var(--blue);
   color: #fff;
   font-weight: 900;
 }
@@ -886,7 +906,7 @@ input[type='range'] {
   grid-template-columns: repeat(4, 1fr);
   width: min(100%, 430px);
   min-height: calc(var(--nav-height) + env(safe-area-inset-bottom));
-  border-top: 1px solid rgba(184, 212, 200, 0.78);
+  border-top: 1px solid rgba(156, 200, 245, 0.5);
   background: rgba(255, 255, 255, 0.92);
   padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
   backdrop-filter: blur(18px);
@@ -912,8 +932,74 @@ input[type='range'] {
 }
 
 .bottom-nav button.selected {
-  background: var(--surface-green);
-  color: var(--green-dark);
+  background: var(--surface-blue-strong);
+  color: var(--blue);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #071827;
+    --surface: #0d2336;
+    --surface-soft: #102b44;
+    --surface-blue: #0b2948;
+    --surface-blue-strong: #123e68;
+    --surface-green: #0b2c24;
+    --surface-green-strong: #123d30;
+    --text: #eaf5ff;
+    --muted: #93a8b8;
+    --line: #1f3c52;
+    --line-strong: #2b5874;
+    --blue: #78b7ff;
+    --blue-dark: #d8ebff;
+    --blue-line: #2f74b8;
+    --green: #6fe2a1;
+    --green-dark: #bbf7d0;
+    --green-line: #277c52;
+    --sky: #78b7ff;
+    --red: #ff9a9a;
+    --red-soft: #4a1f25;
+    --navy: #eaf5ff;
+    --shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+  }
+
+  html {
+    background: #061421;
+  }
+
+  body {
+    background: linear-gradient(180deg, #071827 0%, #061421 100%);
+  }
+
+  .app-frame {
+    background: linear-gradient(180deg, #081d31 0, var(--app-bg) 320px);
+    box-shadow: 0 0 0 1px rgba(120, 183, 255, 0.08), 0 24px 70px rgba(0, 0, 0, 0.36);
+  }
+
+  .app-logo {
+    background: #0a5caa;
+  }
+
+  .hcp-pill,
+  .hole-pill,
+  .app-stepper input,
+  .distance-tile,
+  .arrival-token,
+  .course-select select,
+  .settings-field input,
+  .settings-field select {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  .preview-grid div,
+  .formula-strip span,
+  .insight-matrix div {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .bottom-nav {
+    background: rgba(7, 24, 39, 0.92);
+    border-top-color: rgba(120, 183, 255, 0.24);
+  }
 }
 
 @media (min-width: 720px) {
