@@ -1,8 +1,9 @@
-const CACHE_NAME = 'bluetgolf-sg-lite-v3';
+const CACHE_NAME = 'bluetgolf-sg-lite-v4';
 const APP_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './data/courses.xml',
   './icons/app-icon.svg',
   './src/app.js',
   './src/styles.css',

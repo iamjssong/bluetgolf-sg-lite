@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<courses>
+  <course id="st-andrews-old" name="St.Andres Old" country="Scotland">
+    <hole no="1" par="4" distanceM="343" />
+    <hole no="2" par="4" distanceM="413" />
+    <hole no="3" par="4" distanceM="363" />
+    <hole no="4" par="4" distanceM="440" />
+    <hole no="5" par="5" distanceM="521" />
+    <hole no="6" par="4" distanceM="377" />
+    <hole no="7" par="4" distanceM="340" />
+    <hole no="8" par="3" distanceM="160" />
+    <hole no="9" par="4" distanceM="321" />
+    <hole no="10" par="4" distanceM="351" />
+    <hole no="11" par="3" distanceM="159" />
+    <hole no="12" par="4" distanceM="316" />
+    <hole no="13" par="4" distanceM="427" />
+    <hole no="14" par="5" distanceM="563" />
+    <hole no="15" par="4" distanceM="418" />
+    <hole no="16" par="4" distanceM="386" />
+    <hole no="17" par="4" distanceM="455" />
+    <hole no="18" par="4" distanceM="326" />
+  </course>
+
+  <course id="pebble-beach" name="Pebble Beach" country="United States">
+    <hole no="1" par="4" distanceM="346" />
+    <hole no="2" par="5" distanceM="470" />
+    <hole no="3" par="4" distanceM="366" />
+    <hole no="4" par="4" distanceM="303" />
+    <hole no="5" par="3" distanceM="178" />
+    <hole no="6" par="5" distanceM="480" />
+    <hole no="7" par="3" distanceM="99" />
+    <hole no="8" par="4" distanceM="390" />
+    <hole no="9" par="4" distanceM="427" />
+    <hole no="10" par="4" distanceM="406" />
+    <hole no="11" par="4" distanceM="352" />
+    <hole no="12" par="3" distanceM="185" />
+    <hole no="13" par="4" distanceM="408" />
+    <hole no="14" par="5" distanceM="525" />
+    <hole no="15" par="4" distanceM="364" />
+    <hole no="16" par="4" distanceM="368" />
+    <hole no="17" par="3" distanceM="163" />
+    <hole no="18" par="5" distanceM="497" />
+  </course>
+
+  <course id="augusta-national" name="Augusta National" country="United States">
+    <hole no="1" par="4" distanceM="407" />
+    <hole no="2" par="5" distanceM="526" />
+    <hole no="3" par="4" distanceM="320" />
+    <hole no="4" par="3" distanceM="219" />
+    <hole no="5" par="4" distanceM="453" />
+    <hole no="6" par="3" distanceM="165" />
+    <hole no="7" par="4" distanceM="411" />
+    <hole no="8" par="5" distanceM="521" />
+    <hole no="9" par="4" distanceM="421" />
+    <hole no="10" par="4" distanceM="453" />
+    <hole no="11" par="4" distanceM="476" />
+    <hole no="12" par="3" distanceM="142" />
+    <hole no="13" par="5" distanceM="497" />
+    <hole no="14" par="4" distanceM="402" />
+    <hole no="15" par="5" distanceM="503" />
+    <hole no="16" par="3" distanceM="155" />
+    <hole no="17" par="4" distanceM="402" />
+    <hole no="18" par="4" distanceM="425" />
+  </course>
+
+  <course id="carnoustie-golf-links" name="Carnoustie Golf Links" country="Scotland">
+    <hole no="1" par="4" distanceM="373" />
+    <hole no="2" par="4" distanceM="424" />
+    <hole no="3" par="4" distanceM="323" />
+    <hole no="4" par="4" distanceM="380" />
+    <hole no="5" par="4" distanceM="382" />
+    <hole no="6" par="5" distanceM="530" />
+    <hole no="7" par="4" distanceM="376" />
+    <hole no="8" par="3" distanceM="153" />
+    <hole no="9" par="4" distanceM="438" />
+    <hole no="10" par="4" distanceM="427" />
+    <hole no="11" par="4" distanceM="349" />
+    <hole no="12" par="5" distanceM="462" />
+    <hole no="13" par="3" distanceM="155" />
+    <hole no="14" par="5" distanceM="470" />
+    <hole no="15" par="4" distanceM="430" />
+    <hole no="16" par="3" distanceM="226" />
+    <hole no="17" par="4" distanceM="420" />
+    <hole no="18" par="4" distanceM="456" />
+  </course>
+
+  <course id="oakmont-country-club" name="Oakmont Country Club" country="United States">
+    <hole no="1" par="4" distanceM="441" />
+    <hole no="2" par="4" distanceM="313" />
+    <hole no="3" par="4" distanceM="391" />
+    <hole no="4" par="5" distanceM="557" />
+    <hole no="5" par="4" distanceM="350" />
+    <hole no="6" par="3" distanceM="177" />
+    <hole no="7" par="4" distanceM="435" />
+    <hole no="8" par="3" distanceM="265" />
+    <hole no="9" par="4" distanceM="436" />
+    <hole no="10" par="4" distanceM="423" />
+    <hole no="11" par="4" distanceM="347" />
+    <hole no="12" par="5" distanceM="608" />
+    <hole no="13" par="3" distanceM="168" />
+    <hole no="14" par="4" distanceM="326" />
+    <hole no="15" par="4" distanceM="456" />
+    <hole no="16" par="3" distanceM="211" />
+    <hole no="17" par="4" distanceM="288" />
+    <hole no="18" par="4" distanceM="442" />
+  </course>
+</courses>

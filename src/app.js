@@ -2,41 +2,59 @@ import { calculateHoleSg } from './domain/sg/calculateHoleSg.js';
 import { calculateRoundSg } from './domain/sg/calculateRoundSg.js';
 import { FIRST_PUTT_BUCKETS } from './domain/sg/expectedPutts.js';
 import { CONFIDENCE_LABELS, SG_LABELS } from './domain/sg/sgTypes.js';
-import { GREEN_ARRIVAL_OPTIONS, sampleHoles, sampleTrend } from './domain/sg/sampleRound.js';
+import { GREEN_ARRIVAL_OPTIONS } from './domain/sg/sampleRound.js';
 import { HOLE_REASON_COPY } from './domain/sg/insightRules.js';
 import { roundForDisplay } from './domain/sg/interpolation.js';
 
-const STORAGE_KEY = 'bluetgolf-sg-lite-state-v2';
+const STORAGE_KEY = 'bluetgolf-sg-lite-state-v3';
+const COURSE_XML_URL = './data/courses.xml';
 
 const defaultState = {
   activeTab: 'input',
   handicapIndex: 10,
-  courseName: 'BlueT CC West',
+  courseId: '',
+  courseName: '',
   playedAt: new Date().toISOString().slice(0, 10),
-  selectedHoleNo: 4,
+  selectedHoleNo: 1,
   entryMode: 'BUCKET',
-  holes: sampleHoles,
+  holes: [],
 };
 
 const app = document.querySelector('#app');
 const liveInputTimers = new Map();
+let courses = [];
+let coursesLoaded = false;
+let courseLoadError = '';
 let state = loadState();
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
 function loadState() {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      return structuredClone(defaultState);
+      return clone(defaultState);
     }
 
     const parsed = JSON.parse(stored);
     return {
-      ...structuredClone(defaultState),
+      ...clone(defaultState),
       ...parsed,
-      holes: parsed.holes?.length ? parsed.holes : structuredClone(sampleHoles),
+      holes: Array.isArray(parsed.holes) ? parsed.holes : [],
     };
   } catch {
-    return structuredClone(defaultState);
+    return clone(defaultState);
   }
 }
 
@@ -51,6 +69,10 @@ function setState(patch) {
 }
 
 function updateHole(holeNo, patch) {
+  if (!state.holes.length) {
+    return;
+  }
+
   state = {
     ...state,
     holes: state.holes.map((hole) => (hole.holeNo === holeNo ? { ...hole, ...patch } : hole)),
@@ -59,26 +81,136 @@ function updateHole(holeNo, patch) {
   render();
 }
 
+async function loadCourses() {
+  try {
+    const response = await fetch(COURSE_XML_URL, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Course XML request failed: ${response.status}`);
+    }
+
+    courses = parseCoursesXml(await response.text());
+    coursesLoaded = true;
+    courseLoadError = '';
+    hydrateStoredCourseIfNeeded();
+  } catch (error) {
+    coursesLoaded = true;
+    courseLoadError = error.message;
+  }
+
+  render();
+}
+
+function parseCoursesXml(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) {
+    throw new Error('Course XML parse failed');
+  }
+
+  return [...doc.querySelectorAll('course')]
+    .map((courseNode) => ({
+      id: courseNode.getAttribute('id') ?? '',
+      name: courseNode.getAttribute('name') ?? '',
+      country: courseNode.getAttribute('country') ?? '',
+      holes: [...courseNode.querySelectorAll('hole')].map((holeNode) => ({
+        holeNo: Number(holeNode.getAttribute('no')),
+        par: Number(holeNode.getAttribute('par')),
+        distanceM: Number(holeNode.getAttribute('distanceM')),
+      })),
+    }))
+    .filter((course) => course.id && course.name && course.holes.length === 18);
+}
+
+function hydrateStoredCourseIfNeeded() {
+  if (!state.courseId || state.holes.length) {
+    return;
+  }
+
+  const course = courses.find((item) => item.id === state.courseId);
+  if (!course) {
+    return;
+  }
+
+  state = {
+    ...state,
+    courseName: course.name,
+    selectedHoleNo: 1,
+    holes: createBlankHoles(course),
+  };
+  saveState();
+}
+
+function createBlankHoles(course) {
+  return course.holes.map((hole) => ({
+    ...hole,
+    score: null,
+    putts: null,
+    firstPuttDistanceM: null,
+    firstPuttDistanceBucket: null,
+    penalties: 0,
+    greenArrivalStatus: null,
+  }));
+}
+
+function selectCourse(courseId) {
+  if (!courseId) {
+    setState({
+      courseId: '',
+      courseName: '',
+      selectedHoleNo: 1,
+      holes: [],
+      activeTab: 'input',
+    });
+    return;
+  }
+
+  const course = courses.find((item) => item.id === courseId);
+  if (!course) {
+    return;
+  }
+
+  if (state.courseId === courseId && state.holes.length) {
+    setState({ activeTab: 'input' });
+    return;
+  }
+
+  setState({
+    courseId: course.id,
+    courseName: course.name,
+    selectedHoleNo: 1,
+    activeTab: 'input',
+    holes: createBlankHoles(course),
+  });
+}
+
+function hasCourse() {
+  return Boolean(state.courseId && state.holes.length);
+}
+
 function selectedHole() {
-  return state.holes.find((hole) => hole.holeNo === state.selectedHoleNo) ?? state.holes[0];
+  return state.holes.find((hole) => hole.holeNo === state.selectedHoleNo) ?? state.holes[0] ?? null;
 }
 
 function selectedHoleSg() {
+  const hole = selectedHole();
+  if (!hole) {
+    return { error: { codes: ['NO_HOLE_SELECTED'] } };
+  }
+
   try {
-    return calculateHoleSg({ ...selectedHole(), handicapIndex: state.handicapIndex });
+    return calculateHoleSg({ ...hole, handicapIndex: state.handicapIndex });
   } catch (error) {
     return { error };
   }
 }
 
-function formatSg(value, digits = 2) {
+function formatSg(value, digits = 2, fallback = '거리 필요') {
   if (value == null) {
-    return '거리 필요';
+    return fallback;
   }
 
   const rounded = roundForDisplay(value, digits);
   if (Math.abs(rounded) < 0.005) {
-    return '±0.00';
+    return (0).toFixed(digits);
   }
 
   return `${rounded > 0 ? '+' : ''}${rounded.toFixed(digits)}`;
@@ -89,6 +221,10 @@ function valueTone(value) {
   if (value > 0.15) return 'positive';
   if (value < -0.15) return 'negative';
   return 'neutral';
+}
+
+function formatScoreValue(value) {
+  return value == null ? '-' : value;
 }
 
 function icon(name) {
@@ -111,13 +247,14 @@ function icon(name) {
 }
 
 function numberControl(id, label, value, min, max, suffix = '') {
+  const displayValue = value == null ? '' : value;
   return `
     <label class="app-field">
       <span>${label}</span>
       <div class="app-stepper" data-stepper="${id}" data-min="${min}" data-max="${max}">
-        <button type="button" class="round-icon-button" data-step="-1" aria-label="${label} 줄이기">${icon('minus')}</button>
-        <input id="${id}" type="number" min="${min}" max="${max}" value="${value}" inputmode="decimal" />
-        <button type="button" class="round-icon-button" data-step="1" aria-label="${label} 늘리기">${icon('plus')}</button>
+        <button type="button" class="round-icon-button" data-step="-1" aria-label="${label} 낮추기">${icon('minus')}</button>
+        <input id="${id}" type="number" min="${min}" max="${max}" value="${displayValue}" placeholder="-" inputmode="decimal" />
+        <button type="button" class="round-icon-button" data-step="1" aria-label="${label} 올리기">${icon('plus')}</button>
         ${suffix ? `<em>${suffix}</em>` : ''}
       </div>
     </label>
@@ -125,6 +262,12 @@ function numberControl(id, label, value, min, max, suffix = '') {
 }
 
 function renderAppHeader(summary) {
+  const title = state.courseName || '골프장을 선택하세요';
+  const helper = state.courseName
+    ? `${state.playedAt} · ${summary.holesCalculated}/18홀 SG 분리 계산`
+    : '입력 화면에서 코스를 고르면 빈 스코어카드가 열립니다';
+  const totalSg = state.courseName ? formatSg(summary.totalSg, 1, '-') : '-';
+
   return `
     <div class="status-bar" aria-hidden="true">
       <span>9:41</span>
@@ -135,7 +278,7 @@ function renderAppHeader(summary) {
         <span class="app-logo">BT</span>
         <div>
           <strong>BlueTgolf</strong>
-          <small>오늘 라운드</small>
+          <small>SG Lite</small>
         </div>
       </div>
       <button type="button" class="hcp-pill" data-tab="settings" aria-label="핸디캡 설정으로 이동">
@@ -146,12 +289,12 @@ function renderAppHeader(summary) {
     <section class="round-hero">
       <div>
         <span class="overline">현재 라운드</span>
-        <h1>${state.courseName}</h1>
-        <p>${state.playedAt} · ${summary.holesCalculated}/18홀 SG 분리 계산</p>
+        <h1>${escapeHtml(title)}</h1>
+        <p>${helper}</p>
       </div>
-      <div class="round-score ${valueTone(summary.totalSg)}">
+      <div class="round-score ${state.courseName ? valueTone(summary.totalSg) : 'muted'}">
         <span>전체 SG</span>
-        <strong>${formatSg(summary.totalSg, 1)}</strong>
+        <strong>${totalSg}</strong>
       </div>
     </section>
   `;
@@ -159,9 +302,9 @@ function renderAppHeader(summary) {
 
 function renderSummaryRail(summary) {
   const items = [
-    { label: SG_LABELS.total, value: summary.totalSg, helper: '라운드' },
-    { label: SG_LABELS.green, value: summary.greenSg, helper: '그린 전' },
-    { label: SG_LABELS.putting, value: summary.puttingSg, helper: '그린 위' },
+    { label: SG_LABELS.total, value: hasCourse() ? summary.totalSg : null, helper: '라운드' },
+    { label: SG_LABELS.green, value: hasCourse() ? summary.greenSg : null, helper: '그린 전' },
+    { label: SG_LABELS.putting, value: hasCourse() ? summary.puttingSg : null, helper: '그린 위' },
   ];
 
   return `
@@ -171,7 +314,7 @@ function renderSummaryRail(summary) {
           (item) => `
             <article class="summary-chip ${valueTone(item.value)}">
               <span>${item.label}</span>
-              <strong>${formatSg(item.value, 1)}</strong>
+              <strong>${formatSg(item.value, 1, '-')}</strong>
               <small>${item.helper}</small>
             </article>
           `,
@@ -181,7 +324,53 @@ function renderSummaryRail(summary) {
   `;
 }
 
+function renderCoursePicker() {
+  const placeholder = coursesLoaded ? '골프장을 선택하세요' : '코스 목록 불러오는 중';
+  const helper = courseLoadError
+    ? '코스 파일을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.'
+    : '코스를 선택하면 18개 홀의 빈 입력 화면이 준비됩니다.';
+
+  return `
+    <article class="app-card course-card">
+      <div>
+        <span class="overline">코스 선택</span>
+        <h2>플레이할 골프장</h2>
+      </div>
+      <label class="course-select">
+        <span>골프장</span>
+        <select id="courseSelect" ${coursesLoaded && !courseLoadError ? '' : 'disabled'}>
+          <option value="">${placeholder}</option>
+          ${courses
+            .map(
+              (course) => `
+                <option value="${escapeHtml(course.id)}" ${course.id === state.courseId ? 'selected' : ''}>
+                  ${escapeHtml(course.name)}
+                </option>
+              `,
+            )
+            .join('')}
+        </select>
+      </label>
+      <p>${helper}</p>
+    </article>
+  `;
+}
+
+function renderEmptyCard(title, body) {
+  return `
+    <article class="app-card empty-card">
+      ${icon('golf')}
+      <h2>${title}</h2>
+      <p>${body}</p>
+    </article>
+  `;
+}
+
 function renderHolePicker(round) {
+  if (!round.holes.length) {
+    return '';
+  }
+
   return `
     <nav class="hole-rail" aria-label="홀 선택">
       ${round.holes
@@ -190,7 +379,7 @@ function renderHolePicker(round) {
           return `
             <button type="button" class="hole-pill ${isSelected ? 'selected' : ''} ${valueTone(hole.sg?.totalSg)}" data-hole="${hole.holeNo}">
               <span>${hole.holeNo}</span>
-              <small>${formatSg(hole.sg?.totalSg, 1)}</small>
+              <small>${formatSg(hole.sg?.totalSg, 1, '-')}</small>
             </button>
           `;
         })
@@ -231,11 +420,66 @@ function renderArrivalChips(hole) {
   `;
 }
 
-function renderInputScreen(round) {
-  const hole = selectedHole();
-  const sg = selectedHoleSg();
+function renderPreviewSheet(hole, sg) {
   const reason = sg.reasonCode ? HOLE_REASON_COPY[sg.reasonCode] : null;
   const errors = sg.error?.codes ?? [];
+  const isWaitingForScore = errors.includes('SCORE_INVALID') || errors.includes('PUTTS_INVALID');
+  const invalidMessage = errors.includes('PUTTS_OVER_SCORE')
+    ? '퍼트 수는 전체 스코어보다 클 수 없습니다.'
+    : '';
+  const title = isWaitingForScore ? '스코어 입력 대기' : reason?.label ?? '첫 퍼트 거리 필요';
+  const sentence = isWaitingForScore
+    ? '스코어와 퍼트 수를 입력하면 그린까지와 퍼팅을 분리해서 계산합니다.'
+    : reason?.sentence ?? '첫 퍼트 거리를 입력하면 그린까지와 퍼팅을 분리해서 분석할 수 있습니다.';
+
+  return `
+    ${invalidMessage ? `<div class="validation">${invalidMessage}</div>` : ''}
+    <article class="preview-sheet ${valueTone(sg.totalSg)}">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <div>
+          <span class="overline">SG 프리뷰</span>
+          <h2>${title}</h2>
+        </div>
+        <span class="confidence ${sg.confidence?.toLowerCase() ?? 'low'}">신뢰도 ${CONFIDENCE_LABELS[sg.confidence] ?? '낮음'}</span>
+      </div>
+      <div class="preview-grid">
+        <div>
+          <span>${SG_LABELS.green}</span>
+          <strong class="${valueTone(sg.greenSg)}">${formatSg(sg.greenSg)}</strong>
+        </div>
+        <div>
+          <span>${SG_LABELS.putting}</span>
+          <strong class="${valueTone(sg.puttingSg)}">${formatSg(sg.puttingSg)}</strong>
+        </div>
+        <div>
+          <span>${SG_LABELS.total}</span>
+          <strong class="${valueTone(sg.totalSg)}">${formatSg(sg.totalSg, 2, '-')}</strong>
+        </div>
+      </div>
+      <p>${sentence}</p>
+      <div class="formula-strip">
+        <span>Hole ${sg.holeExpected == null ? '-' : roundForDisplay(sg.holeExpected, 2)}</span>
+        <span>Putt ${sg.puttExpected == null ? '-' : roundForDisplay(sg.puttExpected, 2)}</span>
+        <span>Before ${sg.strokesBeforePutting ?? '-'}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderInputScreen(round) {
+  if (!hasCourse()) {
+    return `
+      <section class="screen active-screen">
+        ${renderSummaryRail(round.summary)}
+        ${renderCoursePicker()}
+        ${renderEmptyCard('빈 라운드에서 시작합니다', '샘플 스코어는 넣지 않았습니다. 코스를 선택하면 1번부터 18번까지 직접 입력할 수 있습니다.')}
+      </section>
+    `;
+  }
+
+  const hole = selectedHole();
+  const sg = selectedHoleSg();
 
   return `
     <section class="screen active-screen">
@@ -265,7 +509,7 @@ function renderInputScreen(round) {
           <div class="block-title">
             <div>
               <span class="overline">첫 퍼트 거리</span>
-              <p>정확하지 않으면 가까운 거리만 선택해도 분석됩니다.</p>
+              <p>정확하지 않으면 가까운 거리만 선택해도 분석합니다.</p>
             </div>
             <div class="app-segmented" role="tablist" aria-label="거리 입력 모드">
               <button type="button" class="${state.entryMode === 'BUCKET' ? 'selected' : ''}" data-mode="BUCKET">버킷</button>
@@ -278,7 +522,7 @@ function renderInputScreen(round) {
               : numberControl(
                   'firstPuttDistanceM',
                   '첫 퍼트 거리',
-                  hole.firstPuttDistanceM ?? FIRST_PUTT_BUCKETS[hole.firstPuttDistanceBucket]?.distanceM ?? 5,
+                  hole.firstPuttDistanceM ?? FIRST_PUTT_BUCKETS[hole.firstPuttDistanceBucket]?.distanceM ?? null,
                   1,
                   30,
                   'm',
@@ -290,40 +534,9 @@ function renderInputScreen(round) {
           <span class="overline">그린 도달 상태</span>
           ${renderArrivalChips(hole)}
         </div>
-
-        ${errors.length ? '<div class="validation">퍼트 수는 총 스코어보다 클 수 없습니다.</div>' : ''}
       </article>
 
-      <article class="preview-sheet ${valueTone(sg.totalSg)}">
-        <div class="sheet-handle" aria-hidden="true"></div>
-        <div class="sheet-head">
-          <div>
-            <span class="overline">SG 프리뷰</span>
-            <h2>${reason?.label ?? '첫 퍼트 거리 필요'}</h2>
-          </div>
-          <span class="confidence ${sg.confidence?.toLowerCase() ?? 'low'}">신뢰도 ${CONFIDENCE_LABELS[sg.confidence] ?? '낮음'}</span>
-        </div>
-        <div class="preview-grid">
-          <div>
-            <span>${SG_LABELS.green}</span>
-            <strong class="${valueTone(sg.greenSg)}">${formatSg(sg.greenSg)}</strong>
-          </div>
-          <div>
-            <span>${SG_LABELS.putting}</span>
-            <strong class="${valueTone(sg.puttingSg)}">${formatSg(sg.puttingSg)}</strong>
-          </div>
-          <div>
-            <span>${SG_LABELS.total}</span>
-            <strong class="${valueTone(sg.totalSg)}">${formatSg(sg.totalSg)}</strong>
-          </div>
-        </div>
-        <p>${reason?.sentence ?? '첫 퍼트 거리를 입력하면 그린까지와 퍼팅을 분리해서 분석할 수 있습니다.'}</p>
-        <div class="formula-strip">
-          <span>Hole ${sg.holeExpected == null ? '-' : roundForDisplay(sg.holeExpected, 2)}</span>
-          <span>Putt ${sg.puttExpected == null ? '-' : roundForDisplay(sg.puttExpected, 2)}</span>
-          <span>Before ${sg.strokesBeforePutting ?? '-'}</span>
-        </div>
-      </article>
+      ${renderPreviewSheet(hole, sg)}
     </section>
   `;
 }
@@ -331,11 +544,20 @@ function renderInputScreen(round) {
 function renderReportScreen(round) {
   const summary = round.summary;
 
+  if (!hasCourse()) {
+    return `
+      <section class="screen active-screen">
+        ${renderSummaryRail(summary)}
+        ${renderEmptyCard('아직 리포트가 없습니다', '입력 탭에서 코스를 선택하고 홀별 스코어를 입력하면 리포트가 만들어집니다.')}
+      </section>
+    `;
+  }
+
   return `
     <section class="screen active-screen">
       <article class="app-card insight-card">
         <span class="overline">라운드 리포트</span>
-        <h2>${summary.insightText}</h2>
+        <h2>${summary.holesCalculated ? summary.insightText : '입력된 홀이 없습니다'}</h2>
         <div class="insight-matrix">
           <div><span>베스트 그린</span><strong>${summary.bestGreenHoleNo ?? '-'}번</strong></div>
           <div><span>워스트 그린</span><strong>${summary.worstGreenHoleNo ?? '-'}번</strong></div>
@@ -350,16 +572,18 @@ function renderReportScreen(round) {
             const reason = hole.sg?.reasonCode ? HOLE_REASON_COPY[hole.sg.reasonCode] : null;
             const firstPutt = hole.firstPuttDistanceM
               ? `${hole.firstPuttDistanceM}m`
-              : `${FIRST_PUTT_BUCKETS[hole.firstPuttDistanceBucket]?.distanceM ?? '-'}m`;
+              : hole.firstPuttDistanceBucket
+                ? `${FIRST_PUTT_BUCKETS[hole.firstPuttDistanceBucket]?.distanceM ?? '-'}m`
+                : '-';
 
             return `
               <button type="button" class="hole-row ${hole.holeNo === state.selectedHoleNo ? 'selected' : ''}" data-row-hole="${hole.holeNo}">
                 <span class="row-hole">${hole.holeNo}</span>
                 <span class="row-main">
-                  <strong>Par ${hole.par} · ${hole.score}타 · ${hole.putts}퍼트</strong>
-                  <small>${firstPutt} · ${reason?.label ?? '거리 필요'}${(hole.penalties ?? 0) > 0 ? ' · 페널티' : ''}</small>
+                  <strong>Par ${hole.par} · ${formatScoreValue(hole.score)}타 · ${formatScoreValue(hole.putts)}퍼트</strong>
+                  <small>${firstPutt} · ${reason?.label ?? '입력 대기'}${(hole.penalties ?? 0) > 0 ? ' · 페널티' : ''}</small>
                 </span>
-                <span class="row-sg ${valueTone(hole.sg?.totalSg)}">${formatSg(hole.sg?.totalSg, 1)}</span>
+                <span class="row-sg ${valueTone(hole.sg?.totalSg)}">${formatSg(hole.sg?.totalSg, 1, '-')}</span>
               </button>
             `;
           })
@@ -370,29 +594,36 @@ function renderReportScreen(round) {
 }
 
 function renderTrendScreen(summary) {
-  const trend = sampleTrend.map((item) => (item.label === '오늘' ? { ...item, ...summary } : item));
-  const maxAbs = Math.max(...trend.flatMap((item) => [Math.abs(item.greenSg), Math.abs(item.puttingSg), Math.abs(item.totalSg)]), 1);
+  if (!hasCourse() || !summary.totalHolesCalculated) {
+    return `
+      <section class="screen active-screen">
+        ${renderEmptyCard('추이는 아직 비어 있습니다', '라운드 저장 기능을 붙인 뒤 최근 라운드 흐름을 표시할 공간입니다. 지금은 현재 라운드 입력에 집중합니다.')}
+      </section>
+    `;
+  }
+
+  const maxAbs = Math.max(Math.abs(summary.greenSg), Math.abs(summary.puttingSg), Math.abs(summary.totalSg), 1);
 
   return `
     <section class="screen active-screen">
       <article class="app-card trend-card">
-        <span class="overline">추이</span>
-        <h2>최근 3라운드</h2>
+        <span class="overline">현재 라운드</span>
+        <h2>SG 구성</h2>
         <div class="trend-list">
-          ${trend
-            .map(
-              (item) => `
-                <div class="trend-item">
-                  <span>${item.label}</span>
-                  <div class="trend-track">
-                    <i class="green" style="width:${Math.max((Math.abs(item.greenSg) / maxAbs) * 100, 8)}%"></i>
-                    <i class="putting" style="width:${Math.max((Math.abs(item.puttingSg) / maxAbs) * 100, 8)}%"></i>
-                  </div>
-                  <strong class="${valueTone(item.totalSg)}">${formatSg(item.totalSg, 1)}</strong>
-                </div>
-              `,
-            )
-            .join('')}
+          <div class="trend-item">
+            <span>그린</span>
+            <div class="trend-track">
+              <i class="green" style="width:${Math.max((Math.abs(summary.greenSg) / maxAbs) * 100, 8)}%"></i>
+            </div>
+            <strong class="${valueTone(summary.greenSg)}">${formatSg(summary.greenSg, 1)}</strong>
+          </div>
+          <div class="trend-item">
+            <span>퍼팅</span>
+            <div class="trend-track">
+              <i class="putting" style="width:${Math.max((Math.abs(summary.puttingSg) / maxAbs) * 100, 8)}%"></i>
+            </div>
+            <strong class="${valueTone(summary.puttingSg)}">${formatSg(summary.puttingSg, 1)}</strong>
+          </div>
         </div>
         <div class="trend-legend">
           <span><i class="green"></i>그린까지 SG</span>
@@ -406,13 +637,10 @@ function renderTrendScreen(summary) {
 function renderSettingsScreen() {
   return `
     <section class="screen active-screen">
+      ${renderCoursePicker()}
       <article class="app-card settings-card">
         <span class="overline">설정</span>
         <h2>라운드 기준</h2>
-        <label class="settings-field">
-          <span>코스</span>
-          <input id="courseName" type="text" value="${state.courseName}" />
-        </label>
         <label class="settings-field">
           <span>플레이일</span>
           <input id="playedAt" type="date" value="${state.playedAt}" />
@@ -421,7 +649,7 @@ function renderSettingsScreen() {
           <span>핸디캡 ${state.handicapIndex}H</span>
           <input id="handicapIndex" type="range" min="0" max="36" step="1" value="${state.handicapIndex}" />
         </label>
-        <button type="button" class="primary-action" id="resetRound">샘플 라운드로 초기화</button>
+        <button type="button" class="primary-action" id="resetRound">빈 라운드로 초기화</button>
       </article>
     </section>
   `;
@@ -443,7 +671,7 @@ function renderBottomNav() {
   ];
 
   return `
-    <nav class="bottom-nav" aria-label="앱 탭">
+    <nav class="bottom-nav" aria-label="앱 메뉴">
       ${tabs
         .map(
           (tab) => `
@@ -472,6 +700,13 @@ function render() {
   `;
 
   bindEvents();
+  syncSelectedHoleIntoView();
+}
+
+function syncSelectedHoleIntoView() {
+  window.requestAnimationFrame(() => {
+    document.querySelector('.hole-pill.selected')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  });
 }
 
 function bindEvents() {
@@ -479,12 +714,12 @@ function bindEvents() {
     button.addEventListener('click', () => setState({ activeTab: button.dataset.tab }));
   });
 
-  document.querySelector('#handicapIndex')?.addEventListener('input', (event) => {
-    setState({ handicapIndex: Number(event.target.value) });
+  document.querySelector('#courseSelect')?.addEventListener('change', (event) => {
+    selectCourse(event.target.value);
   });
 
-  document.querySelector('#courseName')?.addEventListener('change', (event) => {
-    setState({ courseName: event.target.value });
+  document.querySelector('#handicapIndex')?.addEventListener('input', (event) => {
+    setState({ handicapIndex: Number(event.target.value) });
   });
 
   document.querySelector('#playedAt')?.addEventListener('change', (event) => {
@@ -521,7 +756,10 @@ function bindEvents() {
     const min = Number(stepper.dataset.min);
     const max = Number(stepper.dataset.max);
     const commitValue = () => {
-      if (input.value.trim() === '') return;
+      if (input.value.trim() === '') {
+        updateHole(state.selectedHoleNo, { [field]: field === 'penalties' ? 0 : null });
+        return;
+      }
 
       const nextValue = Math.min(Math.max(Number(input.value), min), max);
       if (Number.isFinite(nextValue)) {
@@ -532,7 +770,8 @@ function bindEvents() {
     stepper.querySelectorAll('[data-step]').forEach((button) => {
       button.addEventListener('click', () => {
         const step = Number(button.dataset.step);
-        const nextValue = Math.min(Math.max(Number(input.value) + step, min), max);
+        const baseValue = input.value.trim() === '' ? min - step : Number(input.value);
+        const nextValue = Math.min(Math.max(baseValue + step, min), max);
         updateHole(state.selectedHoleNo, { [field]: nextValue });
       });
     });
@@ -546,7 +785,7 @@ function bindEvents() {
   });
 
   document.querySelector('#resetRound')?.addEventListener('click', () => {
-    state = structuredClone(defaultState);
+    state = clone(defaultState);
     saveState();
     render();
   });
@@ -557,3 +796,4 @@ if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
 }
 
 render();
+loadCourses();

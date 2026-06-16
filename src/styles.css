@@ -40,7 +40,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -345,9 +346,12 @@ button {
   gap: 8px;
   margin: 16px -16px 14px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding: 0 16px 4px;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
 
 .hole-rail::-webkit-scrollbar {
@@ -356,6 +360,7 @@ button {
 
 .hole-pill {
   display: grid;
+  flex: 0 0 52px;
   min-width: 52px;
   min-height: 58px;
   place-items: center;
@@ -397,7 +402,8 @@ button {
   gap: 7px;
 }
 
-.app-field > span {
+.app-field > span,
+.course-select > span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 850;
@@ -435,7 +441,9 @@ button {
 }
 
 .app-stepper input:focus,
-.settings-field input:focus {
+.settings-field input:focus,
+.settings-field select:focus,
+.course-select select:focus {
   border-color: var(--green);
   box-shadow: 0 0 0 4px rgba(6, 151, 102, 0.12);
 }
@@ -522,11 +530,10 @@ button {
 }
 
 .distance-tile strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
+  overflow-wrap: anywhere;
+  font-size: 10px;
   font-weight: 900;
+  line-height: 1.15;
 }
 
 .distance-tile span {
@@ -569,6 +576,61 @@ button {
   padding: 10px 12px;
   font-size: 12px;
   font-weight: 850;
+}
+
+.course-card,
+.empty-card {
+  display: grid;
+  gap: 13px;
+}
+
+.course-card h2,
+.empty-card h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.18;
+}
+
+.course-card p,
+.empty-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.course-select {
+  display: grid;
+  gap: 7px;
+}
+
+.course-select select {
+  min-height: 48px;
+  appearance: none;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--green-dark) 50%) calc(100% - 18px) 20px / 6px 6px no-repeat,
+    linear-gradient(135deg, var(--green-dark) 50%, transparent 50%) calc(100% - 12px) 20px / 6px 6px no-repeat,
+    #fff;
+  color: var(--navy);
+  padding: 0 38px 0 13px;
+  font-size: 15px;
+  font-weight: 850;
+  outline: none;
+}
+
+.empty-card {
+  justify-items: start;
+}
+
+.empty-card .icon {
+  width: 28px;
+  height: 28px;
+  color: var(--green-dark);
 }
 
 .preview-sheet {
@@ -815,7 +877,8 @@ button {
   border-radius: 50%;
 }
 
-.settings-field input {
+.settings-field input,
+.settings-field select {
   width: 100%;
   min-height: 46px;
   border: 1px solid var(--line);
