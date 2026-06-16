@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bluetgolf-sg-lite-v5';
+const CACHE_NAME = 'bluetgolf-sg-lite-v6';
 const APP_ASSETS = [
   './',
   './index.html',
