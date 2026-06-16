@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="BlueTgolf">
+  <rect width="512" height="512" rx="112" fill="#062338"/>
+  <path d="M112 354V126h96c49 0 78 25 78 63 0 24-12 43-34 54 30 9 48 31 48 62 0 43-34 69-88 69H112Zm64-139h28c13 0 21-7 21-19s-8-19-21-19h-28v38Zm0 105h34c17 0 27-9 27-24s-10-24-27-24h-34v48Z" fill="#fff"/>
+  <path d="M315 177h91v54h-91v123h-64V231h-75v-54h75v-51h64v51Z" fill="#12b981"/>
+</svg>

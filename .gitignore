@@ -1,0 +1,11 @@
+.DS_Store
+Thumbs.db
+node_modules/
+.chrome-profile/
+.chrome-profile-mobile/
+server.out.log
+server.err.log
+*.log
+dist/
+build/
+coverage/

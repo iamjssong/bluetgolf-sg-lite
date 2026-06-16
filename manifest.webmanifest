@@ -1,0 +1,26 @@
+{
+  "name": "BlueTgolf SG Lite",
+  "short_name": "BlueTgolf",
+  "description": "Amateur golf SG analysis with low-friction score, putt, and first-putt distance input.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#eef8f3",
+  "background_color": "#eef8f3",
+  "icons": [
+    {
+      "src": "./icons/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "오늘 라운드 입력",
+      "short_name": "입력",
+      "url": "./index.html"
+    }
+  ]
+}
