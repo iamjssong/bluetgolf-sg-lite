@@ -10,7 +10,7 @@ const STORAGE_KEY = 'bluetgolf-sg-lite-state-v3';
 const COURSE_XML_URL = './data/courses.xml';
 
 const defaultState = {
-  activeTab: 'input',
+  activeTab: 'dashboard',
   handicapIndex: 10,
   courseId: '',
   courseName: '',
@@ -18,6 +18,8 @@ const defaultState = {
   selectedHoleNo: 1,
   entryMode: 'BUCKET',
   holes: [],
+  savedRounds: [],
+  completionMode: false,
 };
 
 const app = document.querySelector('#app');
@@ -52,6 +54,7 @@ function loadState() {
       ...clone(defaultState),
       ...parsed,
       holes: Array.isArray(parsed.holes) ? parsed.holes : [],
+      savedRounds: Array.isArray(parsed.savedRounds) ? parsed.savedRounds : [],
     };
   } catch {
     return clone(defaultState);
@@ -186,6 +189,39 @@ function hasCourse() {
   return Boolean(state.courseId && state.holes.length);
 }
 
+function getRoundFromRecord(record) {
+  return calculateRoundSg(record.holes ?? [], record.handicapIndex ?? state.handicapIndex);
+}
+
+function getSavedRoundModels(limit = Infinity) {
+  return state.savedRounds
+    .map((record) => ({
+      ...record,
+      round: getRoundFromRecord(record),
+    }))
+    .sort((a, b) => String(b.savedAt ?? b.playedAt).localeCompare(String(a.savedAt ?? a.playedAt)))
+    .slice(0, limit);
+}
+
+function getRecentRounds(limit = 5) {
+  return getSavedRoundModels(limit);
+}
+
+function getCumulativeSummary(rounds = getSavedRoundModels()) {
+  return rounds.reduce(
+    (total, record) => {
+      const summary = record.round.summary;
+      total.rounds += 1;
+      total.holes += summary.totalHolesCalculated;
+      total.totalSg += summary.totalSg;
+      total.greenSg += summary.greenSg;
+      total.puttingSg += summary.puttingSg;
+      return total;
+    },
+    { rounds: 0, holes: 0, totalSg: 0, greenSg: 0, puttingSg: 0 },
+  );
+}
+
 function selectedHole() {
   return state.holes.find((hole) => hole.holeNo === state.selectedHoleNo) ?? state.holes[0] ?? null;
 }
@@ -262,11 +298,17 @@ function numberControl(id, label, value, min, max, suffix = '') {
 }
 
 function renderAppHeader(summary) {
-  const title = state.courseName || '골프장을 선택하세요';
-  const helper = state.courseName
-    ? `${state.playedAt} · ${summary.holesCalculated}/18홀 SG 분리 계산`
-    : '입력 화면에서 코스를 고르면 빈 스코어카드가 열립니다';
-  const totalSg = state.courseName ? formatSg(summary.totalSg, 1, '-') : '-';
+  const savedRounds = getSavedRoundModels();
+  const cumulative = getCumulativeSummary(savedRounds);
+  const title = state.activeTab === 'dashboard' ? 'SG 대시보드' : state.courseName || '골프장을 선택하세요';
+  const helper =
+    state.activeTab === 'dashboard'
+      ? `${cumulative.rounds}라운드 · ${cumulative.holes}홀 누적`
+      : state.courseName
+        ? `${state.playedAt} · ${summary.holesCalculated}/18홀 SG 분리 계산`
+        : '입력 화면에서 코스를 고르면 빈 스코어카드가 열립니다';
+  const totalSg = state.activeTab === 'dashboard' ? formatSg(cumulative.totalSg, 1, '-') : state.courseName ? formatSg(summary.totalSg, 1, '-') : '-';
+  const scoreLabel = state.activeTab === 'dashboard' ? '누적 SG' : '전체 SG';
 
   return `
     <header class="app-header">
@@ -284,12 +326,12 @@ function renderAppHeader(summary) {
     </header>
     <section class="round-hero">
       <div>
-        <span class="overline">현재 라운드</span>
+        <span class="overline">${state.activeTab === 'dashboard' ? '전체 기록' : '현재 라운드'}</span>
         <h1>${escapeHtml(title)}</h1>
         <p>${helper}</p>
       </div>
-      <div class="round-score ${state.courseName ? valueTone(summary.totalSg) : 'muted'}">
-        <span>전체 SG</span>
+      <div class="round-score ${valueTone(state.activeTab === 'dashboard' ? cumulative.totalSg : summary.totalSg)}">
+        <span>${scoreLabel}</span>
         <strong>${totalSg}</strong>
       </div>
     </section>
@@ -359,6 +401,93 @@ function renderEmptyCard(title, body) {
       <h2>${title}</h2>
       <p>${body}</p>
     </article>
+  `;
+}
+
+function renderDashboardScreen() {
+  const recentRounds = getRecentRounds(5);
+  const cumulative = getCumulativeSummary(getSavedRoundModels());
+
+  if (!recentRounds.length) {
+    return `
+      <section class="screen active-screen">
+        <section class="summary-rail" aria-label="누적 SG 요약">
+          <article class="summary-chip muted"><span>누적 SG</span><strong>-</strong><small>전체</small></article>
+          <article class="summary-chip muted"><span>라운드</span><strong>0</strong><small>저장됨</small></article>
+          <article class="summary-chip muted"><span>홀</span><strong>0</strong><small>분석됨</small></article>
+        </section>
+        ${renderEmptyCard('아직 저장된 라운드가 없습니다', '입력 모드에서 코스를 선택하고 스코어를 저장하면 누적 SG와 최근 5라운드 그래프가 여기에 표시됩니다.')}
+      </section>
+    `;
+  }
+
+  const graphRounds = [...recentRounds].reverse();
+  const maxAbs = Math.max(...graphRounds.map((round) => Math.abs(round.round.summary.totalSg)), 1);
+
+  return `
+    <section class="screen active-screen">
+      <section class="summary-rail" aria-label="누적 SG 요약">
+        <article class="summary-chip ${valueTone(cumulative.totalSg)}">
+          <span>누적 SG</span>
+          <strong>${formatSg(cumulative.totalSg, 1, '-')}</strong>
+          <small>전체</small>
+        </article>
+        <article class="summary-chip ${valueTone(cumulative.greenSg)}">
+          <span>${SG_LABELS.green}</span>
+          <strong>${formatSg(cumulative.greenSg, 1, '-')}</strong>
+          <small>누적</small>
+        </article>
+        <article class="summary-chip ${valueTone(cumulative.puttingSg)}">
+          <span>${SG_LABELS.putting}</span>
+          <strong>${formatSg(cumulative.puttingSg, 1, '-')}</strong>
+          <small>누적</small>
+        </article>
+      </section>
+
+      <article class="app-card dashboard-card">
+        <div class="card-head">
+          <div>
+            <span class="overline">최근 5라운드</span>
+            <h2>라운드별 SG</h2>
+          </div>
+          <span class="round-count">${recentRounds.length}R</span>
+        </div>
+        <div class="sg-chart" aria-label="최근 5라운드 SG 그래프">
+          ${graphRounds
+            .map((record, index) => {
+              const totalSg = record.round.summary.totalSg;
+              const height = Math.max((Math.abs(totalSg) / maxAbs) * 112, 10);
+              return `
+                <div class="sg-bar-item">
+                  <span class="sg-value ${valueTone(totalSg)}">${formatSg(totalSg, 1, '-')}</span>
+                  <div class="sg-bar-track">
+                    <i class="${totalSg >= 0 ? 'positive-bar' : 'negative-bar'}" style="height:${height}px"></i>
+                  </div>
+                  <strong>${index + 1}</strong>
+                  <small>${escapeHtml(record.playedAt?.slice(5) ?? '-')}</small>
+                </div>
+              `;
+            })
+            .join('')}
+        </div>
+      </article>
+
+      <div class="recent-round-list">
+        ${recentRounds
+          .map(
+            (record) => `
+              <article class="recent-round-row">
+                <div>
+                  <strong>${escapeHtml(record.courseName || '저장 라운드')}</strong>
+                  <small>${escapeHtml(record.playedAt)} · ${record.round.summary.totalHolesCalculated}홀</small>
+                </div>
+                <span class="${valueTone(record.round.summary.totalSg)}">${formatSg(record.round.summary.totalSg, 1, '-')}</span>
+              </article>
+            `,
+          )
+          .join('')}
+      </div>
+    </section>
   `;
 }
 
@@ -533,60 +662,77 @@ function renderInputScreen(round) {
       </article>
 
       ${renderPreviewSheet(hole, sg)}
+      <button type="button" class="primary-action save-round-action" id="saveRound" ${round.summary.totalHolesCalculated ? '' : 'disabled'}>저장</button>
     </section>
   `;
 }
 
 function renderReportScreen(round) {
-  const summary = round.summary;
+  const recentRounds = getRecentRounds(5);
+  const summary = recentRounds[0]?.round.summary ?? round.summary;
 
-  if (!hasCourse()) {
+  if (!recentRounds.length && !hasCourse()) {
     return `
       <section class="screen active-screen">
         ${renderSummaryRail(summary)}
-        ${renderEmptyCard('아직 리포트가 없습니다', '입력 탭에서 코스를 선택하고 홀별 스코어를 입력하면 리포트가 만들어집니다.')}
+        ${renderEmptyCard('아직 리포트가 없습니다', '입력 모드에서 라운드를 저장하면 최근 5라운드 기준의 강점과 약점 리포트가 만들어집니다.')}
       </section>
     `;
   }
 
+  const reportRounds = recentRounds.length ? recentRounds : [{ round, courseName: state.courseName, playedAt: state.playedAt }];
+  const reportText = buildRecentReportText(reportRounds);
+  const aggregate = getCumulativeSummary(reportRounds);
+
   return `
     <section class="screen active-screen">
       <article class="app-card insight-card">
-        <span class="overline">라운드 리포트</span>
-        <h2>${summary.holesCalculated ? summary.insightText : '입력된 홀이 없습니다'}</h2>
+        <span class="overline">최근 5라운드 리포트</span>
+        <h2>${reportRounds.length}라운드 기준 SG 분석</h2>
+        <p class="report-copy">${reportText}</p>
         <div class="insight-matrix">
-          <div><span>베스트 그린</span><strong>${summary.bestGreenHoleNo ?? '-'}번</strong></div>
-          <div><span>워스트 그린</span><strong>${summary.worstGreenHoleNo ?? '-'}번</strong></div>
-          <div><span>베스트 퍼팅</span><strong>${summary.bestPuttingHoleNo ?? '-'}번</strong></div>
-          <div><span>워스트 퍼팅</span><strong>${summary.worstPuttingHoleNo ?? '-'}번</strong></div>
+          <div><span>누적 SG</span><strong class="${valueTone(aggregate.totalSg)}">${formatSg(aggregate.totalSg, 1, '-')}</strong></div>
+          <div><span>최근 라운드</span><strong>${reportRounds.length}R</strong></div>
+          <div><span>${SG_LABELS.green}</span><strong class="${valueTone(aggregate.greenSg)}">${formatSg(aggregate.greenSg, 1, '-')}</strong></div>
+          <div><span>${SG_LABELS.putting}</span><strong class="${valueTone(aggregate.puttingSg)}">${formatSg(aggregate.puttingSg, 1, '-')}</strong></div>
         </div>
+        ${
+          state.completionMode
+            ? '<button type="button" class="primary-action" id="completeReport">완료</button>'
+            : ''
+        }
       </article>
 
-      <div class="hole-list">
-        ${round.holes
-          .map((hole) => {
-            const reason = hole.sg?.reasonCode ? HOLE_REASON_COPY[hole.sg.reasonCode] : null;
-            const firstPutt = hole.firstPuttDistanceM
-              ? `${hole.firstPuttDistanceM}m`
-              : hole.firstPuttDistanceBucket
-                ? `${FIRST_PUTT_BUCKETS[hole.firstPuttDistanceBucket]?.distanceM ?? '-'}m`
-                : '-';
-
-            return `
-              <button type="button" class="hole-row ${hole.holeNo === state.selectedHoleNo ? 'selected' : ''}" data-row-hole="${hole.holeNo}">
-                <span class="row-hole">${hole.holeNo}</span>
+      <div class="hole-list recent-rounds-report">
+        ${reportRounds
+          .map(
+            (record) => `
+              <article class="hole-row">
+                <span class="row-hole">${escapeHtml(record.playedAt?.slice(5) ?? '-')}</span>
                 <span class="row-main">
-                  <strong>Par ${hole.par} · ${formatScoreValue(hole.score)}타 · ${formatScoreValue(hole.putts)}퍼트</strong>
-                  <small>${firstPutt} · ${reason?.label ?? '입력 대기'}${(hole.penalties ?? 0) > 0 ? ' · 페널티' : ''}</small>
+                  <strong>${escapeHtml(record.courseName || '저장 라운드')}</strong>
+                  <small>${record.round.summary.totalHolesCalculated}홀 · 그린 ${formatSg(record.round.summary.greenSg, 1, '-')} · 퍼팅 ${formatSg(record.round.summary.puttingSg, 1, '-')}</small>
                 </span>
-                <span class="row-sg ${valueTone(hole.sg?.totalSg)}">${formatSg(hole.sg?.totalSg, 1, '-')}</span>
-              </button>
-            `;
-          })
+                <span class="row-sg ${valueTone(record.round.summary.totalSg)}">${formatSg(record.round.summary.totalSg, 1, '-')}</span>
+              </article>
+            `,
+          )
           .join('')}
       </div>
     </section>
   `;
+}
+
+function buildRecentReportText(records) {
+  const aggregate = getCumulativeSummary(records);
+  const bestArea = aggregate.greenSg >= aggregate.puttingSg ? SG_LABELS.green : SG_LABELS.putting;
+  const weakArea = aggregate.greenSg < aggregate.puttingSg ? SG_LABELS.green : SG_LABELS.putting;
+  const latest = records[0]?.round.summary.totalSg ?? 0;
+  const oldest = records.at(-1)?.round.summary.totalSg ?? latest;
+  const trend = latest >= oldest ? '최근 흐름은 안정적이거나 개선되는 방향' : '최근 흐름은 약간 내려가는 방향';
+  const totalLabel = aggregate.totalSg >= 0 ? '전체적으로 기준보다 타수를 벌어 주는 경기력' : '전체적으로 기준보다 타수를 잃는 구간이 남아 있는 경기력';
+
+  return `최근 ${records.length}라운드의 누적 SG는 ${formatSg(aggregate.totalSg, 1, '-')}로, ${totalLabel}입니다. 강점은 ${bestArea}입니다. 이 영역에서 ${formatSg(Math.max(aggregate.greenSg, aggregate.puttingSg), 1, '-')}를 기록해 스코어를 지키는 힘이 보입니다. 반대로 약점은 ${weakArea}입니다. ${formatSg(Math.min(aggregate.greenSg, aggregate.puttingSg), 1, '-')} 수준이라 좋은 흐름을 만든 뒤에도 일부 타수를 다시 내주는 패턴이 있습니다. ${trend}입니다. 실력을 더 올리려면 라운드 전에는 30~80m 어프로치와 1~2m 퍼트를 짧게 반복하고, 라운드 후에는 SG가 크게 낮았던 홀의 첫 퍼트 거리와 페널티 여부를 먼저 복기하세요. 다음 목표는 약점 영역에서 라운드당 1타를 줄이는 것입니다.`;
 }
 
 function renderTrendScreen(summary) {
@@ -652,17 +798,17 @@ function renderSettingsScreen() {
 }
 
 function renderActiveScreen(round) {
+  if (state.activeTab === 'dashboard') return renderDashboardScreen();
   if (state.activeTab === 'report') return renderReportScreen(round);
-  if (state.activeTab === 'trend') return renderTrendScreen(round.summary);
   if (state.activeTab === 'settings') return renderSettingsScreen();
   return renderInputScreen(round);
 }
 
 function renderBottomNav() {
   const tabs = [
-    { key: 'input', label: '입력', icon: 'input' },
+    { key: 'dashboard', label: '대시보드', icon: 'trend' },
+    { key: 'input', label: '입력 모드', icon: 'input' },
     { key: 'report', label: '리포트', icon: 'report' },
-    { key: 'trend', label: '추이', icon: 'trend' },
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
 
@@ -707,7 +853,7 @@ function syncSelectedHoleIntoView() {
 
 function bindEvents() {
   document.querySelectorAll('[data-tab]').forEach((button) => {
-    button.addEventListener('click', () => setState({ activeTab: button.dataset.tab }));
+    button.addEventListener('click', () => setState({ activeTab: button.dataset.tab, completionMode: false }));
   });
 
   document.querySelector('#courseSelect')?.addEventListener('change', (event) => {
@@ -781,9 +927,39 @@ function bindEvents() {
   });
 
   document.querySelector('#resetRound')?.addEventListener('click', () => {
-    state = clone(defaultState);
+    state = { ...clone(defaultState), handicapIndex: state.handicapIndex, savedRounds: state.savedRounds };
     saveState();
     render();
+  });
+
+  document.querySelector('#saveRound')?.addEventListener('click', () => {
+    const round = calculateRoundSg(state.holes, state.handicapIndex);
+    if (!round.summary.totalHolesCalculated) {
+      return;
+    }
+
+    const savedRound = {
+      id: `${Date.now()}`,
+      savedAt: new Date().toISOString(),
+      playedAt: state.playedAt,
+      courseId: state.courseId,
+      courseName: state.courseName,
+      handicapIndex: state.handicapIndex,
+      holes: clone(state.holes),
+    };
+
+    state = {
+      ...state,
+      savedRounds: [savedRound, ...state.savedRounds].slice(0, 50),
+      activeTab: 'report',
+      completionMode: true,
+    };
+    saveState();
+    render();
+  });
+
+  document.querySelector('#completeReport')?.addEventListener('click', () => {
+    setState({ activeTab: 'dashboard', completionMode: false });
   });
 }
 
